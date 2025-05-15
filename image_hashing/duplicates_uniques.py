@@ -5,6 +5,8 @@ import imagehash
 import shutil
 import argparse
 
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Image deduplication using perceptual hashing")
     parser.add_argument("--input_folder", type =str, required= True, help = "Path to the folder containing images")
@@ -17,6 +19,7 @@ args = parse_args()
 HASH_SIZE = args.hash_size
 THRESHOLD = args.threshold_percent
 PADDING = args.padding
+
 
 max_distance = HASH_SIZE * HASH_SIZE
 threshold = int((max_distance * THRESHOLD) / 100.0)
@@ -108,6 +111,7 @@ def save_images(unique_images, duplicates, destination_folder):
             move_to_folder(image, group_folder)
 
     
+
 if __name__ == "__main__":
     try:
         folder = args.input_folder
