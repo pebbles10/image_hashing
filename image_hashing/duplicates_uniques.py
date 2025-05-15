@@ -3,19 +3,40 @@ from pathlib import Path
 from PIL import Image, ImageOps
 import imagehash 
 import shutil
-#import numpy as np
+import argparse
 
-#asking for the path
-def get_folder_path():
-    return input("Please enter the path: ").strip()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Image deduplication using perceptual hashing")
+    parser.add_argument("--imput_folder", type =str, required= True, help = "Path to the folder containing images")
+    parser.add_argument("--threshold_percent", type=float, default=5.0, help="Threshold percentage for duplicate detection (default: 5.0%)")
+    parser.add_argument("--padding", type=int, default=0, help="Padding for cropping (default: 0)")
+    parser.add_argument("--hash_size", type=int, default=16, help="Hash size for pHash (default: 16)")
+    parser.add_argument("--output_folder", type=str, default="processed_images", help="Path to save processed images (default: processed_images)")
+    return parser.parse_args()
+
+args = parse_args()
+HASH_SIZE = args.hash_size
+THRESHOLD = args.threshold_percent
+PADDING = args.padding
+PROCESSED_IMAGES = args.output_folder
+
+
+max_distance = HASH_SIZE * HASH_SIZE
+threshold = int((max_distance * THRESHOLD) / 100.0)
 
 def get_image(folder_path):
     folder = Path(folder_path)
+    if not folder.is_dir():
+        raise ValueError(f"Invalid folder path: {folder_path}")
     images = list(folder.glob("*.jpg"))
+    if not images:
+        raise ValueError(f"No .jpg images found in the folder: {folder_path}")
     print(f"Found {len(images)} .jpg images in the folder.\n")
     return images
 
-def crop_box(image):
+def crop_box(image, padding):
     img = Image.open(image)
     width, height = img.size
 
@@ -24,7 +45,6 @@ def crop_box(image):
     #cropped_img = img.crop((padding_x, padding_y, width - padding_x, height - padding_y))
     #return cropped_img
 
-    padding =1200
     left = padding
     top = padding
     right = width - padding
@@ -33,7 +53,7 @@ def crop_box(image):
     cropped_img = ImageOps.exif_transpose(cropping)
     return cropped_img
 
-def compute_hash(image, hash_size=16):
+def compute_hash(image, hash_size):
     image_hash = imagehash.phash(image, hash_size=hash_size)
     return image_hash
 
@@ -53,17 +73,18 @@ def find_duplicates(current_hash, unique_images, threshold):
     return None
 
 
-def compare_images(image_files, destination_folder, threshold=5):
+def compare_images(image_files, destination_folder=PROCESSED_IMAGES, THRESHOLD):
     print("Comparing images...\n")
+
     unique_images = []
     duplicates = {}
 
     for current_image in image_files:
         print(f"Processing: {os.path.basename(current_image)}")
-        cropping = crop_box(current_image)
-        current_hash = compute_hash(cropping)
+        cropping = crop_box(current_image, PADDING)
+        current_hash = compute_hash(cropping, HASH_SIZE)
 
-        matched_original = find_duplicates(current_hash, unique_images, threshold)
+        matched_original = find_duplicates(current_hash, unique_images, THRESHOLD)
 
         if matched_original:
             print(f"Detected duplicate of: {os.path.basename(matched_original)}")
@@ -74,9 +95,7 @@ def compare_images(image_files, destination_folder, threshold=5):
             print("Unique image.")
             unique_images.append((current_hash, current_image))
     
-    save_images(unique_images, duplicates, destination_folder)
-    
-
+    save_images(unique_images, duplicates, destination_folder)  
     print("\nSaving files...")
     
 def save_images(unique_images, duplicates, destination_folder):
@@ -93,11 +112,16 @@ def save_images(unique_images, duplicates, destination_folder):
         os.makedirs(group_folder, exist_ok=True)
         for image in [original_image] + duplicate_list:
             move_to_folder(image, group_folder)
+
     
 
 if __name__ == "__main__":
-    folder = get_folder_path()
-    image_list = get_image(folder)
-
-    compare_images(image_list, destination_folder="processed_images")
-    print("Done! Images sorted")
+    try:
+        folder = args.input_folder
+        output_folder = args.output_folder
+        image_list = get_image(folder)
+        compare_images(image_list, destination_folder=output_folder)
+        print("Done! Images sorted.")
+    except Exception as e:
+        print(f"Error: {e}")
+    
