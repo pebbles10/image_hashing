@@ -22,7 +22,6 @@ PADDING = args.padding
 
 
 max_distance = HASH_SIZE * HASH_SIZE
-threshold = int((max_distance * THRESHOLD) / 100.0)
 
 def get_image(folder_path):
     folder = Path(folder_path)
@@ -70,7 +69,7 @@ def find_duplicates(current_hash, unique_images, threshold):
             return previous_image
     return None
 
-def compare_images(image_files, destination_folder, threshold=THRESHOLD):
+def compare_images(image_files, destination_folder, THRESHOLD):
     print("Comparing images...\n")
 
     unique_images = []
